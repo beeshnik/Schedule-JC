@@ -1,2 +1,2 @@
 # Schedule-JC
-Schedule app on Jetpack Compose
+Schedule app for android by HSE Perm Helper developers
