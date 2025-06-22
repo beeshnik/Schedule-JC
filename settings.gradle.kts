@@ -21,4 +21,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "ScheduleJC"
 include(":app")
- 
+include(":data")
+include(":domain")

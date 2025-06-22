@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">ScheduleJC</string>
+    <string name="title_activity_schedule_creation">ScheduleCreationActivity</string>
 </resources>
