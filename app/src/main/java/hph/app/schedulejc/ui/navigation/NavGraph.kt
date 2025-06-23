@@ -2,9 +2,12 @@ package hph.app.schedulejc.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import hph.app.schedulejc.ui.screen.GetScheduleScreen
 import hph.app.schedulejc.ui.screen.MainScreen
 import hph.app.schedulejc.ui.screen.ProfileCreationScreen
 
@@ -22,7 +25,14 @@ fun AppNavGraph(
         }
 
         composable(Route.CreateProfile.route) {
-            ProfileCreationScreen()
+            ProfileCreationScreen(navController = navController)
+        }
+
+        composable(
+            Route.GetSchedule.route,
+            arguments = listOf(navArgument("profileId") { type = NavType.StringType })) { backStackEntry ->
+            val lessonId = backStackEntry.arguments?.getString("profileId")
+            GetScheduleScreen(navController = navController, profileId = lessonId)
         }
 
 //        composable(

@@ -2,9 +2,7 @@ package hph.app.data.repository
 
 import hph.app.data.remote.api.RetrofitClient
 import hph.app.data.remote.api.ScheduleApi
-import hph.app.domain.model.Course
-import hph.app.domain.model.Group
-import hph.app.domain.model.Program
+import hph.app.domain.model.Lesson
 import hph.app.domain.repository.ScheduleRepository
 
 class ScheduleRepositoryImplementation(
@@ -14,16 +12,22 @@ class ScheduleRepositoryImplementation(
         return scheduleApi.getCourse().courses
     }
 
-    override suspend fun getGroup(program: Program, course: Course): List<Group> {
+    override suspend fun getGroup(program: String, course: Int): List<String> {
         return scheduleApi.getGroup(
-            program = program.name,
-            course = course.number
+            program = program,
+            course = course
         ).groups
     }
 
-    override suspend fun getProgram(course: Course): List<Program> {
+    override suspend fun getProgram(course: Int): List<String> {
         return scheduleApi.getProgram(
-            course = course.number
+            course = course
         ).programs
+    }
+
+    override suspend fun getSchedule(group: String): List<Lesson> {
+        return scheduleApi.getSchedule(
+            group = group
+        ).lessons
     }
 }

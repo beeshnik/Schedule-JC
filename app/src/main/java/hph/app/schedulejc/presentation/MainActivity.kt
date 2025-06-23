@@ -20,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import hph.app.data.local.db.DatabaseProvider
 import hph.app.schedulejc.ui.navigation.AppNavGraph
 import hph.app.schedulejc.ui.theme.ScheduleJCTheme
 
