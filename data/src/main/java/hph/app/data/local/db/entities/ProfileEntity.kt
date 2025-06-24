@@ -12,5 +12,6 @@ data class ProfileEntity(
     val program: String,
     val name: String,
     val group: String,
+    val color: Int,
     @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis()
 )

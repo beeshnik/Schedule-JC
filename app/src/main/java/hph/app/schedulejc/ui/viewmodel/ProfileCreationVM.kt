@@ -1,6 +1,7 @@
 package hph.app.schedulejc.ui.viewmodel
 
 import android.util.Log
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -46,13 +47,25 @@ class ProfileCreationVM(
         _cardName.value = name
     }
 
+    private val _selectedColor = MutableStateFlow(0xFFFAFAFA.toInt())
+    val selectedColor: StateFlow<Int> = _selectedColor
+
+    fun setCardColor(color: Int) {
+        _selectedColor.value = color
+    }
+
     fun loadCourses() {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                _courses.value = scheduleRepository.getCourse()
+                val result = scheduleRepository.getCourse()
+                if (result.isEmpty()) {
+                    throw Exception("Нет доступных курсов")
+                }
+                _courses.value = result
             } catch (e: Exception) {
-                Log.e("ScheduleVM", "Ошикба: ${e.message}")
+                Log.e("ScheduleVM", "Ошибка: ${e.message}")
+                _courses.value = emptyList()
             } finally {
                 _isLoading.value = false
             }
@@ -63,9 +76,14 @@ class ProfileCreationVM(
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                _programs.value = scheduleRepository.getProgram(course = course)
+                val result = scheduleRepository.getProgram(course = course)
+                if (result.isEmpty()) {
+                    throw Exception("Нет доступных направлений для этого курса")
+                }
+                _programs.value = result
             } catch (e: Exception) {
-                Log.e("ScheduleVM", "Ошикба: ${e.message}")
+                Log.e("ScheduleVM", "Ошибка: ${e.message}")
+                _programs.value = emptyList()
             } finally {
                 _isLoading.value = false
             }
@@ -76,9 +94,14 @@ class ProfileCreationVM(
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                _groups.value = scheduleRepository.getGroup(course = course, program = program)
+                val result = scheduleRepository.getGroup(course = course, program = program)
+                if (result.isEmpty()) {
+                    throw Exception("Нет доступных групп для этого направления")
+                }
+                _groups.value = result
             } catch (e: Exception) {
-                Log.e("ScheduleVM", "Ошикба: ${e.message}")
+                Log.e("ScheduleVM", "Ошибка: ${e.message}")
+                _groups.value = emptyList()
             } finally {
                 _isLoading.value = false
             }
@@ -105,6 +128,7 @@ class ProfileCreationVM(
             program = selectedProgram.value!!,
             course = selectedCourse.value!!,
             name = _cardName.value!!,
+            color = _selectedColor.value
         )
         viewModelScope.launch {
             profileRepository.saveProfile(profile)

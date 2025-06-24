@@ -29,4 +29,11 @@ class MainScreenVM(
             Log.e("ABC", "${profiles.value.size}")
         }
     }
+
+    fun deleteProfile(id: Int) {
+        viewModelScope.launch {
+            profileRepository.deleteProfile(id = id)
+        }
+        loadProfiles()
+    }
 }

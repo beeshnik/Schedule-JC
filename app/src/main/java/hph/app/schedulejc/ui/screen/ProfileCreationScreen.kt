@@ -1,22 +1,16 @@
 package hph.app.schedulejc.ui.screen
 
-import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -40,6 +34,14 @@ import androidx.navigation.NavController
 import hph.app.schedulejc.ui.theme.ScheduleJCTheme
 import hph.app.schedulejc.ui.viewmodel.ProfileCreationVM
 import hph.app.schedulejc.ui.viewmodel.ProfileCreationVMFactory
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 
 @Composable
 fun ProfileCreationScreen(navController: NavController) {
@@ -56,6 +58,7 @@ fun ProfileCreationScreen(navController: NavController) {
     val isLoading by viewModel.isLoading.collectAsState()
 
     var currentStep by remember { mutableStateOf(1) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) { viewModel.loadCourses() }
     LaunchedEffect(courses) {
@@ -78,7 +81,7 @@ fun ProfileCreationScreen(navController: NavController) {
                                 selectedGroup != null &&
                                 selectedProgram != null &&
                                 selectedCourse != null
-                                ) {
+                            ) {
                                 viewModel.saveProfile()
                                 navController.navigate("main")
                             }
@@ -86,9 +89,9 @@ fun ProfileCreationScreen(navController: NavController) {
                     },
                     onPrev = { if (currentStep > 1) currentStep-- },
                     nextEnabled = when(currentStep) {
-                        1 -> selectedCourse != null
-                        2 -> selectedProgram != null
-                        3 -> selectedGroup != null
+                        1 -> selectedCourse != null && courses.isNotEmpty()
+                        2 -> selectedProgram != null && programs.isNotEmpty()
+                        3 -> selectedGroup != null && groups.isNotEmpty()
                         else -> true
                     }
                 )
@@ -102,30 +105,83 @@ fun ProfileCreationScreen(navController: NavController) {
             ) {
                 when {
                     isLoading -> CircularProgressIndicator()
-                    currentStep == 1 -> CourseSelection(
-                        courses = courses,
-                        selectedCourse = selectedCourse,
-                        onCourseSelected = { viewModel.setSelectedCourse(it) },
-                        modifier = Modifier.padding(16.dp)
+                    errorMessage != null -> ErrorMessage(
+                        message = errorMessage!!,
+                        onRetry = {
+                            errorMessage = null
+                            when(currentStep) {
+                                1 -> viewModel.loadCourses()
+                                2 -> selectedCourse?.let { viewModel.loadPrograms(it) }
+                                3 -> {
+                                    selectedCourse?.let { course ->
+                                        selectedProgram?.let { program ->
+                                            viewModel.loadGroups(course, program)
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     )
-                    currentStep == 2 -> ProgramSelection(
-                        programs = programs,
-                        selectedProgram = selectedProgram,
-                        onProgramSelected = { viewModel.setSelectedProgram(it) },
-                        modifier = Modifier.padding(16.dp)
-                    )
-                    currentStep == 3 -> GroupSelection(
-                        groups = groups,
-                        selectedGroup = selectedGroup,
-                        onGroupSelected = { viewModel.setSelectedGroup(it) },
-                        modifier = Modifier.padding(16.dp)
-                    )
+                    currentStep == 1 -> {
+                        if (courses.isEmpty()) {
+                            ErrorMessage(
+                                message = "Нет доступных курсов",
+                                onRetry = { viewModel.loadCourses() }
+                            )
+                        } else {
+                            CourseSelection(
+                                courses = courses,
+                                selectedCourse = selectedCourse,
+                                onCourseSelected = { viewModel.setSelectedCourse(it) },
+                                modifier = Modifier.padding(16.dp)
+                            )
+                        }
+                    }
+                    currentStep == 2 -> {
+                        if (programs.isEmpty()) {
+                            ErrorMessage(
+                                message = "Нет доступных направлений для выбранного курса",
+                                onRetry = {
+                                    selectedCourse?.let { viewModel.loadPrograms(it) }
+                                }
+                            )
+                        } else {
+                            ProgramSelection(
+                                programs = programs,
+                                selectedProgram = selectedProgram,
+                                onProgramSelected = { viewModel.setSelectedProgram(it) },
+                                modifier = Modifier.padding(16.dp)
+                            )
+                        }
+                    }
+                    currentStep == 3 -> {
+                        if (groups.isEmpty()) {
+                            ErrorMessage(
+                                message = "Нет доступных групп для выбранного направления",
+                                onRetry = {
+                                    selectedCourse?.let { course ->
+                                        selectedProgram?.let { program ->
+                                            viewModel.loadGroups(course, program)
+                                        }
+                                    }
+                                }
+                            )
+                        } else {
+                            GroupSelection(
+                                groups = groups,
+                                selectedGroup = selectedGroup,
+                                onGroupSelected = { viewModel.setSelectedGroup(it) },
+                                modifier = Modifier.padding(16.dp)
+                            )
+                        }
+                    }
                     else -> FinalConfirmation(
                         selectedCourse = selectedCourse,
                         selectedProgram = selectedProgram,
                         selectedGroup = selectedGroup,
                         modifier = Modifier.padding(16.dp),
-                        setName = { viewModel.setCardName(it) }
+                        setName = { viewModel.setCardName(it) },
+                        setColor = { viewModel.setCardColor(it) }
                     )
                 }
             }
@@ -133,6 +189,27 @@ fun ProfileCreationScreen(navController: NavController) {
     }
 }
 
+@Composable
+private fun ErrorMessage(
+    message: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.padding(16.dp)
+        )
+        Button(onClick = onRetry) {
+            Text("Повторить попытку")
+        }
+    }
+}
 @Composable
 private fun NavigationButtons(
     currentStep: Int,
@@ -266,10 +343,20 @@ private fun FinalConfirmation(
     selectedProgram: String?,
     selectedGroup: String?,
     modifier: Modifier = Modifier,
-    setName: (String) -> Unit
+    setName: (String) -> Unit,
+    setColor: (Int) -> Unit
 ) {
     var cardName by remember { mutableStateOf("") }
     val isError by remember { mutableStateOf(false) }
+    val colors = listOf(
+        0xFFFFEBEE, // Red
+        0xFFE3F2FD, // Blue
+        0xFFE8F5E9, // Green
+        0xFFFFF8E1, // Amber
+        0xFFF3E5F5, // Purple
+        0xFFECEFF1  // Blue Grey
+    )
+    var selectedColor by remember { mutableStateOf(colors[0]) }
 
     Column(modifier) {
         Text("Подтверждение выбора", style = MaterialTheme.typography.titleLarge)
@@ -293,11 +380,52 @@ private fun FinalConfirmation(
             }
         )
 
+        // Выбор цвета
+        Text("Цвет карточки:", style = MaterialTheme.typography.bodyLarge)
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            colors.forEach { color ->
+                ColorSelectionItem(
+                    color = color,
+                    isSelected = color == selectedColor,
+                    onSelect = {
+                        selectedColor = color
+                        setColor(color.toInt())
+                    }
+                )
+            }
+        }
+
         InfoRow("Курс:", selectedCourse?.toString() ?: "Не выбран")
         InfoRow("Направление:", selectedProgram ?: "Не выбрано")
         InfoRow("Группа:", selectedGroup ?: "Не выбрана")
     }
 }
+
+@Composable
+private fun ColorSelectionItem(
+    color: Long,
+    isSelected: Boolean,
+    onSelect: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .size(40.dp)
+            .clip(CircleShape)
+            .background(Color(color))
+            .border(
+                width = if (isSelected) 3.dp else 0.dp,
+                color = MaterialTheme.colorScheme.primary,
+                shape = CircleShape
+            )
+            .clickable(onClick = onSelect)
+    )
+}
+
 @Composable
 private fun InfoRow(label: String, value: String) {
     Row(

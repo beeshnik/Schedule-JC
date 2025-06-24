@@ -5,4 +5,5 @@ data class Profile (
     val course: Int,
     val program: String,
     val name: String,
+    val color: Int
 )

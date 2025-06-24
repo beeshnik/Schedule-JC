@@ -7,4 +7,6 @@ interface ProfileRepository {
     suspend fun saveProfile(profile: Profile)
     suspend fun loadProfiles(): List<ProfileDomainEntity>
     suspend fun getProfileById(id: Int): ProfileDomainEntity?
+    suspend fun deleteProfile(id: Int)
+    suspend fun updateProfile(profile: ProfileDomainEntity)
 }

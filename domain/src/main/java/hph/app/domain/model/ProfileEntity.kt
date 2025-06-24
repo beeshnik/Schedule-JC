@@ -6,5 +6,6 @@ data class ProfileDomainEntity(
     val program: String,
     val name: String,
     val group: String,
+    val color: Int,
     val createdAt: Long = System.currentTimeMillis()
 )

@@ -1,7 +1,9 @@
 package hph.app.schedulejc.ui.screen
 
 import android.security.identity.AccessControlProfileId
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -11,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -21,6 +24,9 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardColors
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -46,32 +52,111 @@ import java.util.Locale
 
 @Composable
 fun GetScheduleScreen(navController: NavController, profileId: String?) {
-
     val context = LocalContext.current
     val viewModel: GetScheduleVM = viewModel(
         factory = GetScheduleVMFactory(context = context)
     )
 
     val lessons by viewModel.lessons.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
 
     LaunchedEffect(Unit) { viewModel.loadLessons(profileId) }
 
     ScheduleJCTheme {
-        Scaffold(
-            modifier = Modifier.fillMaxSize(),
-        ) { padding ->
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(1),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(8.dp)
-            ) {
-                items(lessons) { lesson ->
-                    Lesson(lesson = lesson)
+        Box(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            if (isLoading) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background.copy(alpha = 0.8f)),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Загрузка расписания...",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                }
+            } else {
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                ) { padding ->
+                    if (lessons.isEmpty()) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(padding),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Расписание не найдено",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.onBackground
+                            )
+                        }
+                    } else {
+                        val groupedLessons = lessons.groupBy { it.time.date }
+
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(1),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(padding),
+                            contentPadding = PaddingValues(8.dp)
+                        ) {
+                            groupedLessons.forEach { (date, dayLessons) ->
+                                val firstLesson = dayLessons.first()
+                                val dayOfWeek = firstLesson.time.dayOfWeek
+                                    .getDisplayName(TextStyle.FULL, Locale.getDefault())
+                                    .replaceFirstChar { it.titlecase() }
+
+                                item {
+                                    DayHeader(date = date, dayOfWeek = dayOfWeek)
+                                }
+
+                                items(dayLessons.sortedBy { it.time.startTime }) { lesson ->
+                                    Lesson(lesson = lesson)
+                                }
+
+                                item {
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+fun DayHeader(date: String, dayOfWeek: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = dayOfWeek,
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            text = date,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -83,24 +168,23 @@ fun Lesson(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(8.dp),
-        shape = MaterialTheme.shapes.medium
+            .padding(vertical = 4.dp, horizontal = 8.dp),
+        shape = MaterialTheme.shapes.medium,
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Заголовок с названием предмета и типом занятия
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = lesson.subject,
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.weight(1f)
+                    text = "${formatTime(lesson.time.startTime)} - ${formatTime(lesson.time.endTime)}",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
                 )
 
                 Text(
@@ -118,45 +202,15 @@ fun Lesson(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Время занятия
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
+            Text(
+                text = lesson.subject,
+                style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Info,
-                    contentDescription = "Время",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "${lesson.time.startTime} - ${lesson.time.endTime}",
-                    style = MaterialTheme.typography.bodyLarge
-                )
-            }
+            )
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Дата и день недели
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    imageVector = Icons.Default.DateRange,
-                    contentDescription = "Дата",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "${lesson.time.date} (${lesson.time.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.getDefault())})",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-
-            // Преподаватель (если есть)
             lesson.lecturer?.let { lecturer ->
-                Spacer(modifier = Modifier.height(4.dp))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
@@ -164,7 +218,8 @@ fun Lesson(
                     Icon(
                         imageVector = Icons.Default.Person,
                         contentDescription = "Преподаватель",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
@@ -172,11 +227,10 @@ fun Lesson(
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
+                Spacer(modifier = Modifier.height(4.dp))
             }
 
-            // Место проведения (если есть)
             lesson.places?.let { places ->
-                Spacer(modifier = Modifier.height(4.dp))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
@@ -184,7 +238,8 @@ fun Lesson(
                     Icon(
                         imageVector = if (lesson.isOnline()) Icons.Default.Info else Icons.Default.LocationOn,
                         contentDescription = "Место",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
@@ -200,7 +255,6 @@ fun Lesson(
                 }
             }
 
-            // Дополнительная информация (если есть)
             lesson.additionalInfo?.let { info ->
                 Spacer(modifier = Modifier.height(8.dp))
                 Column {
@@ -215,4 +269,8 @@ fun Lesson(
             }
         }
     }
+}
+
+private fun formatTime(time: String): String {
+    return if (time.length == 4) "0$time" else time
 }

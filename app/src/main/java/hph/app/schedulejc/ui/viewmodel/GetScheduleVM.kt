@@ -23,16 +23,27 @@ class GetScheduleVM(
     private val _lessons = MutableStateFlow<List<Lesson>>(emptyList())
     val lessons: StateFlow<List<Lesson>> = _lessons
 
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading: StateFlow<Boolean> = _isLoading
+
     private val _profile = MutableStateFlow<ProfileDomainEntity?>(null)
     val profile: StateFlow<ProfileDomainEntity?> = _profile
 
     fun loadLessons(id: String?) {
         viewModelScope.launch {
-            if (id != null) {
-                _profile.value = profileRepository.getProfileById(id.toInt())
-                if (profile.value != null) {
-                    _lessons.value = scheduleRepository.getSchedule(profile.value!!.group)
+            _isLoading.value = true
+            try {
+                if (id != null) {
+                    _profile.value = profileRepository.getProfileById(id.toInt())
+                    if (profile.value != null) {
+                        _lessons.value = scheduleRepository.getSchedule(profile.value!!.group)
+                    }
                 }
+            } catch (e: Exception) {
+                // Обработка ошибок
+                Log.e("GetScheduleVM", "Error loading schedule", e)
+            } finally {
+                _isLoading.value = false
             }
         }
     }

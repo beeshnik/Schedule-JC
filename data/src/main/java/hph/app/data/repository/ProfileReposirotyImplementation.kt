@@ -25,11 +25,30 @@ class ProfileRepositoryImplementation(context: Context) : ProfileRepository {
         return dao.getProfileById(id)?.toDomain()
     }
 
+    override suspend fun deleteProfile(id: Int) {
+        dao.deleteProfileById(id)
+    }
+
+    override suspend fun updateProfile(profile: ProfileDomainEntity) {
+        dao.updateProfile(profile = profile.toEntity())
+    }
+
+
     private fun Profile.toEntity() = ProfileEntity(
         course = course,
         program = program,
         group = group,
-        name = name
+        name = name,
+        color = color
+    )
+
+    private fun ProfileDomainEntity.toEntity() = ProfileEntity(
+        course = course,
+        program = program,
+        group = group,
+        name = name,
+        color = color,
+        id = id
     )
 
     private fun ProfileEntity.toDomain() = ProfileDomainEntity(
@@ -37,6 +56,7 @@ class ProfileRepositoryImplementation(context: Context) : ProfileRepository {
         program = program,
         group = group,
         name = name,
-        id = id
+        id = id,
+        color = color
     )
 }
